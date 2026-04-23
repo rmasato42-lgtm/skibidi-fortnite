@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060410;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(124,58,237,0.25);
+      --border-hover: rgba(167,139,250,0.5);
+      --purple: #7c3aed;
+      --purple-light: #a78bfa;
+      --purple-dim: #4c1d95;
+      --text: #e0d8f8;
+      --text-muted: #6b5e8a;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── Starfield canvas ── */
+    #stars {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── Wave SVG background ── */
+    .wave-bg {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 0;
+      opacity: 0.12;
+      pointer-events: none;
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px 80px;
+    }
+
+    /* ── Logo ── */
+    .logo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .logo-icon {
+      animation: float 4s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .logo-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 56px;
+      font-weight: 400;
+      color: #fff;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .logo-tagline {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    /* ── Search ── */
+    .search-wrap {
+      width: 100%;
+      max-width: 520px;
+      margin-bottom: 10px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .search-box:focus-within {
+      border-color: var(--purple-light);
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+    }
+
+    .search-icon {
+      padding: 0 12px 0 16px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    #urlInput {
+      flex: 1;
+      padding: 13px 0;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 15px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+    }
+
+    #urlInput::placeholder { color: var(--text-muted); }
+
+    .go-btn {
+      padding: 13px 20px;
+      background: var(--purple);
+      border: none;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+
+    .go-btn:hover { background: #6d28d9; }
+
+    .hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid rgba(167,139,250,.3);
+      border-radius: 3px;
+      font-size: 10px;
+      font-family: monospace;
+      color: var(--purple-light);
+    }
+
+    /* ── Quick apps ── */
+    .quick-section {
+      width: 100%;
+      max-width: 520px;
+      margin-top: 32px;
+    }
+
+    .quick-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 0 2px;
+    }
+
+    .quick-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .quick-edit {
+      font-size: 11px;
+      color: var(--purple-light);
+      cursor: pointer;
+      opacity: 0.7;
+    }
+    .quick-edit:hover { opacity: 1; }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .app-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      padding: 14px 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 400;
+      transition: border-color .15s, background .15s, transform .1s;
+      text-align: center;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .app-tile:hover {
+      border-color: var(--border-hover);
+      background: rgba(124,58,237,0.1);
+      transform: translateY(-1px);
+    }
+
+    .app-tile .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .app-tile .icon img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      object-fit: contain;
+    }
+
+    /* ── Footer ── */
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: linear-gradient(to top, rgba(6,4,16,0.9) 0%, transparent 100%);
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color .15s;
+    }
+    footer a:hover { color: var(--purple-light); }
+    footer span { opacity: 0.4; }
+  </style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<!-- Wave decoration -->
+<svg class="wave-bg" viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg">
+  <path fill="#7c3aed" d="M0,192L48,181.3C96,171,192,149,288,160C384,171,480,213,576,213.3C672,213,768,171,864,154.7C960,139,1056,149,1152,165.3C1248,181,1344,203,1392,213.3L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
+  <path fill="#4c1d95" d="M0,256L48,240C96,224,192,192,288,192C384,192,480,224,576,229.3C672,235,768,213,864,202.7C960,192,1056,192,1152,208C1248,224,1344,256,1392,272L1440,288L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" opacity="0.6"/>
+</svg>
+
+<div class="page">
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <svg class="logo-icon" width="52" height="40" viewBox="0 0 52 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 18C4 18 12 6 26 6C40 6 48 18 48 18" stroke="#a78bfa" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M4 26C4 26 12 14 26 14C40 14 48 26 48 26" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+      <path d="M4 34C4 34 12 22 26 22C40 22 48 34 48 34" stroke="#4c1d95" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+      <circle cx="26" cy="28" r="5" fill="#a78bfa"/>
+      <circle cx="26" cy="28" r="3" fill="#c4b5fd"/>
+    </svg>
+    <div class="logo-text">tide</div>
+  </div>
+  <div class="logo-tagline">open browse</div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <div class="search-box">
+      <span class="search-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </span>
+      <input type="text" id="urlInput" placeholder="search or enter a URL..." autocomplete="off" spellcheck="false" />
+      <button class="go-btn" onclick="go()">Go</button>
+    </div>
+    <p class="hint">No <kbd>https://</kbd> needed &nbsp;·&nbsp; Press <kbd>Enter</kbd> to browse</p>
+  </div>
+
+  <!-- Quick apps -->
+  <div class="quick-section">
+    <div class="quick-header">
+      <span class="quick-label">Quick apps</span>
+    </div>
+    <div class="quick-grid" id="appGrid"></div>
+  </div>
+</div>
+
+<footer>
+  <a href="#">Settings</a>
+  <span>·</span>
+  <a href="#">Privacy</a>
+  <span>·</span>
+  <a href="#">About</a>
+</footer>
+
+<script>
+  // ── Starfield ──
+  const canvas = document.getElementById('stars');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function initStars(n) {
+    stars = Array.from({ length: n }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2 + 0.2,
+      a: Math.random(),
+      speed: Math.random() * 0.003 + 0.001,
+      drift: (Math.random() - 0.5) * 0.05,
+    }));
+  }
+
+  function drawStars() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      s.a += s.speed;
+      s.x += s.drift;
+      if (s.x > canvas.width) s.x = 0;
+      if (s.x < 0) s.x = canvas.width;
+      const alpha = (Math.sin(s.a) + 1) / 2 * 0.7 + 0.05;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,180,255,${alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(drawStars);
+  }
+
+  resize();
+  initStars(140);
+  drawStars();
+  window.addEventListener('resize', () => { resize(); initStars(140); });
+
+  // ── Quick apps ──
+  const apps = [
+    { name: 'YouTube',   url: 'https://youtube.com',          favicon: 'https://www.youtube.com/favicon.ico' },
+    { name: 'GitHub',    url: 'https://github.com',           favicon: 'https://github.com/favicon.ico' },
+    { name: 'Discord',   url: 'https://discord.com/app',      favicon: 'https://discord.com/assets/favicon.ico' },
+    { name: 'TikTok',    url: 'https://tiktok.com',           favicon: 'https://www.tiktok.com/favicon.ico' },
+    { name: 'Google',    url: 'https://google.com',           favicon: 'https://google.com/favicon.ico' },
+    { name: 'Reddit',    url: 'https://reddit.com',           favicon: 'https://www.reddit.com/favicon.ico' },
+    { name: 'Roblox',    url: 'https://roblox.com',           favicon: 'https://www.roblox.com/favicon.ico' },
+    { name: 'Twitch',    url: 'https://twitch.tv',            favicon: 'https://static.twitchsvc.net/assets/uploads/favicon_32.png' },
+    { name: 'Wikipedia', url: 'https://wikipedia.org',        favicon: 'https://wikipedia.org/favicon.ico' },
+    { name: 'Twitter/X', url: 'https://x.com',               favicon: 'https://x.com/favicon.ico' },
+    { name: 'Spotify',   url: 'https://open.spotify.com',    favicon: 'https://open.spotify.com/favicon.ico' },
+    { name: 'HN',        url: 'https://news.ycombinator.com', favicon: 'https://news.ycombinator.com/favicon.ico' },
+  ];
+
+  const grid = document.getElementById('appGrid');
+  apps.forEach(app => {
+    const tile = document.createElement('a');
+    tile.className = 'app-tile';
+    tile.href = '/proxy?url=' + encodeURIComponent(app.url);
+    tile.innerHTML = `
+      <div class="icon"><img src="${app.favicon}" onerror="this.parentElement.textContent='🌐'" /></div>
+      <span>${app.name}</span>
+    `;
+    grid.appendChild(tile);
+  });
+
+  // ── Navigation ──
+  function go() {
+    let val = document.getElementById('urlInput').value.trim();
+    if (!val) return;
+    // If it looks like a search query (no dots or spaces), search Google
+    if (!val.includes('.') || val.includes(' ')) {
+      val = 'https://www.google.com/search?q=' + encodeURIComponent(val);
+    } else {
+      if (!/^https?:\/\//i.test(val)) val = 'https://' + val;
+    }
+    window.location.href = '/proxy?url=' + encodeURIComponent(val);
+  }
+
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') go();
+  });
+</script>
+</body>
+</html>
